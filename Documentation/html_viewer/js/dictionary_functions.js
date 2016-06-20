@@ -6,6 +6,8 @@
 	else tState.selected = 1;
 
 	
+	var sFilters = {type:"",tag:"",os:""};
+	
 	function dataGet(){
 		//console.log(dictionary_data.docs);
 		
@@ -172,6 +174,160 @@
 		return Object.keys(obj).sort();
 	}
 	
+	function setFilter(pKey, pValue)
+	{
+		sFilters[pKey] = pValue;
+	}
+	
+	function filterEntries(pBase, pKey, pValue)
+	{
+		var tData;
+		tData = [];
+		console.log(pBase);
+		$.each(pBase,function(entry_index, entry_data)
+		{
+			if (entry_data.hasOwnProperty(pKey))
+			{
+				if (entry_data[pKey] instanceof Array)
+				{
+					console.log(entry_data[pKey]);
+					console.log(pValue);
+					if (entry_data[pKey].indexOf(pValue) >= 0)
+					{
+						tData.push(entry_data);
+					}
+				}
+				else
+				{
+					if (entry_data[pKey] == pValue)
+					{
+						tData.push(entry_data);
+					}
+				}
+			}
+		});
+		console.log(tData);
+		return tData;
+	}
+		
+	function link_html(pType, pOSArray)
+	{
+		var tHtml = '';
+		$.each(pOSArray,function(entry_index, entry_data)
+		{	
+			if (tHtml != '')
+				tHtml += ',';
+			tHtml += click_text(entry_data, entry_data, pType, '');
+		});
+		return tHtml;
+	}
+
+	function filteredContent()
+	{
+		var tData = dataGet();
+		var tHTML = '<p>Entries';
+		
+		if (sFilters.tag != '')
+		{
+			tData = filterEntries(tData, "tags", sFilters.tag);
+			tHTML += ' tagged ' + sFilters.tag;
+		}
+		if (sFilters.os != '')
+		{
+			tData = filterEntries(tData, "OS", sFilters.os)
+			tHTML += ' for ' + sFilters.os;
+		}
+		if (sFilters.type != '')
+		{
+			tData = filterEntries(tData, "type", sFilters.type)
+			tHTML += ' with type ' + sFilters.type;
+		}
+		tHTML += ':</p>';
+		
+		// Sort by type
+		var tSortedData;
+		tSortedData = {};
+		$.each(tData,function(entry_index, entry_data)
+		{
+			if(!tSortedData.hasOwnProperty(entry_data.type))
+			{
+				tSortedData[entry_data.type] = [];
+			}
+			tSortedData[entry_data.type].push(entry_data);
+		});
+		
+		
+		tHTML += '<div class="col-md-1 lcdoc_section_title"></div><div class="col-md-11" style="margin-bottom:10px">';
+		tHTML += '<table class="lcdoc_glossary_table">';
+		var tHead = '<thead><tr>';
+		var tBody = '<tbody>';
+		var tHeaders = [];
+		var tCheckHeaders = true;
+		$.each(tSortedData,function(item_type, item_data)
+		{
+			$.each(item_data,function(item_index, entry_data){
+				tBody += '<tr>';
+				tBody += '<td>' + click_text_from_entry_data('', entry_data) +'</a></td>';
+				
+				if (tCheckHeaders)
+					tHeaders . push("Name");
+
+				if (sFilters.type == '')
+				{
+					tBody += '<td>';
+					if (tCheckHeaders)
+						tHeaders . push("Type");
+					tBody += click_text(item_type, item_type, "type", '');
+					tBody += '</td>';
+				}
+				
+				if (tCheckHeaders)
+					tHeaders . push("Summary");
+				tBody += '<td>'+replace_link_placeholders_with_param(entry_data.summary)+'</td>';
+				
+				if (entry_data.hasOwnProperty("syntax"))
+				{
+					tBody += '<td>';
+					if (tCheckHeaders)
+						tHeaders . push("Syntax");
+					tBody += replace_link_placeholders_with_param(entry_data.syntax[0]);
+					tBody += '</td>';
+				}
+
+				if (sFilters.os == '' && entry_data.hasOwnProperty("OS"))
+				{
+					tBody += '<td>';	
+					if (tCheckHeaders)
+						tHeaders . push("OS");
+					tBody += link_html("os", entry_data.OS);
+					tBody += '</td>';
+				}
+				
+				if (sFilters.tags == '' && entry_data.hasOwnProperty("tags"))
+				{
+					tBody += '<td>';
+					if (tCheckHeaders)
+						tHeaders . push("Tags");
+					tBody += link_html("tag", entry_data.tags);
+					tBody += '</td>';
+				}
+				tBody += '</tr>';
+				
+				tCheckHeaders = false;
+			});
+		});
+		
+		tBody += '</tbody>';
+		$.each(tHeaders,function(header_index, header_name)
+		{
+			tHead += '<td>' + header_name + '</td>';
+		});
+		
+		tHead += '</tr></thead>';
+		tHTML += tHead + tBody + '</table></div>';
+		return tHTML;
+	}
+	
 	function displayFilters(){
 		// First display the applied filters
 		var tHTML = "";
@@ -302,8 +458,30 @@
 		return marked(tMarkdown, { renderer: renderer });
 	}
 	
+	function dictionaryLanding()
+	{
+		var tTags = [];
+		$.each(dataGet(), function(index, value)
+		{
+			if (value.type == "tag")
+				tTags.push(value);
+		});
+		
+		var tHtml = '<ul>';
+		$.each(tTags, function(index, value)
+		{
+			tHtml += '<li>';
+			tHtml += click_text(value.name, value.name, value.type, '');
+			tHtml += ' - ';
+			tHtml += value.summary;
+			tHtml += '</li>';
+		});
+		tHtml += '</ul>';
+		return tHtml;
+	}
+	
 	function displayEntry(pEntryID){	
-		var tEntryObject = entryData(pEntryID);
+		var tEntryObject = entryIDToData(pEntryID);
 		pEntryID = tEntryObject.id;
 		
 		console.log(tEntryObject);
@@ -317,7 +495,7 @@
 		$(".entry_list_item").removeClass("active");
 		$("#entry_list_item_"+pEntryID).addClass("active");
 		selectedEntryEnsureInView(tEntryObject.id);
-		
+
 		var tHTML = "";
 		var references = [];
 		tHTML += '<h1 style="margin:0px 0px 30px 12px">'+tEntryObject["display name"]+'</h1><div class="row">';
@@ -374,8 +552,16 @@
 						tHTML += reference_type + ':';
 						var reference_html = "";
 						$.each(reference_array, function(reference_index, reference_name) {
-							if(reference_html == "") reference_html = ' <a href="javascript:void(0)" class="load_entry" entryid="'+entryNameToID(reference_name,reference_type)+'">'+reference_name+'</a>';
-							else reference_html += ', <a href="javascript:void(0)" class="load_entry" entryid="'+entryNameToID(reference_name,reference_type)+'">'+reference_name+'</a>';
+							var tReference;
+							if (entryNameToID(reference_name, reference_type) == 0)
+								tReference = reference_name;
+							else
+								tReference = click_text(reference_name, reference_name, reference_type, '');
+							
+							if (reference_html == "") 
+								reference_html = tReference;
+							else 
+								reference_html += ',' + tReference;
 						});
 						tHTML += reference_html;
 						tHTML += '<br />';
@@ -405,13 +591,28 @@
 						tHTML += '<div class="col-md-2 lcdoc_section_title">'+index+'</div><div class="col-md-10" style="margin-bottom:10px">';
 						var association_html = "";
 						$.each(value, function(index2, value2) {
-							var tIndex = entryNameToID(value2,"object");
-							if(tIndex == 0) tIndex = entryNameToID(value2,"library");
-							if(tIndex == 0) tIndex = entryNameToID(value2,"glossary");
-							if(association_html == 0) association_html = '<a href="javascript:void(0)" class="load_entry" entryid="'+tIndex+'">'+value2+'</a>';
-							else association_html += ', <a href="javascript:void(0)" class="load_entry" entryid="'+tIndex+'">'+value2+'</a>';
+							var tTypes, tType;
+							tTypes = ["object","library","glossary"];
+							
+							var tData;
+							$.each(tTypes, function(tTypeIndex, tType) {
+								tData = entryData(value2, tType)
+								if (tData != {})
+									return;
+							});
+							
+							var tAssociation;
+							if (tData == {})
+								tAssociation = value2;
+							else
+								tAssociation = click_text_from_entry_data('', tData);
+							
+							if (association_html == "") 
+								association_html = tAssociation;
+							else 
+								association_html += ',' + tAssociation;
 						});
-						tHTML += association_html+'</div>';
+						tHTML += association_html + '</div>';
 					}
 					break;
 				case "summary":
@@ -468,12 +669,12 @@
 			});
 			
 			$.each(object_data,function(item_type, item_data){
-				tHTML += '<div class="col-md-2 lcdoc_section_title">'+item_type+'</div><div class="col-md-10" style="margin-bottom:10px">';
+				tHTML += '<div class="col-md-1 lcdoc_section_title">'+item_type+'</div><div class="col-md-11" style="margin-bottom:10px">';
 				tHTML += '<table class="lcdoc_glossary_table">';
 				tHTML += '<thead><tr><td><b>Name</b></td><td><b>Summary</b></td><td><b>Syntax</b></td></tr></thead><tbody>';
 				$.each(item_data,function(item_intex, entry_data){
 					tHTML += '<tr>';
-					tHTML += '<td><a href="javascript:void(0)" class="load_entry" entryid="'+entry_data.id+'">'+entry_data["display name"]+'</a></td>';
+					tHTML += '<td>' + click_text_from_entry_data('', entry_data) +'</a></td>';
 					tHTML += '<td>'+replace_link_placeholders_with_param(entry_data.summary)+'</td>';
 					tHTML += '<td>'+replace_link_placeholders_with_param(entry_data.syntax[0])+'</td>';
 					tHTML += '</tr>';
@@ -483,7 +684,14 @@
 			});
 			//console.log(object_data);
 		}
-		
+		else if (tEntryObject.type == "type" || tEntryObject.type == "tag" || tEntryObject.type == "os")
+		{
+			tHTML += filteredContent();
+		}
+		else if (tEntryObject.type == "dictionary")
+		{
+			tHTML += dictionaryLanding();
+		}
 		tHTML += '</div>';
 		
 		$("#api_entry").html(tHTML);
@@ -539,10 +747,10 @@
              	if(return_text == matched_whole){
              		var resolved = resolve_link_placeholder(matched_text);
              		
-             		var entry_id = resolve_link(pEntryObject, resolved[1], resolved[2]);
+             		var resolved_object = resolve_link_object(pEntryObject, resolved[1], resolved[2]);
              		
-             		if (entry_id)
-             	   		return_text = '<a href="javascript:void(0)" class="load_entry" entryid="'+entry_id+'">' + resolved[0] + '</a>';
+             		if (resolved_object.length != 0)
+             	   		return_text = click_text_from_entry_data(resolved[0], resolved_object)
              		else
              			return_text = resolved[0];
              	}
@@ -555,6 +763,25 @@
          	});
 		}
 		return pText;
+	}
+	
+	function click_text_from_entry_data(pLink, pEntryData)
+	{
+		if (pLink == '')
+			return click_text(pEntryData["display name"], pEntryData.name, pEntryData.type, '');
+		else
+			return click_text(pLink, pEntryData.name, pEntryData.type, '');
+	}
+	
+	function click_text(pText, pLinkName, pLinkType, pLinkLibrary)
+	{
+		var text;
+		text = '<a href="javascript:void(0)" class="load_entry" ';
+		text += 'entryName="'+pLinkName+'" '; 
+		text += 'entryType="'+pLinkType+'" '; 
+		text += 'entryLibrary="'+pLinkLibrary+'" '; 
+		text += '>' + pText + '</a>';
+		return text;
 	}
 	
 	// Returns an array with the label, the reference name and optional reference type.
@@ -606,30 +833,78 @@
 	    return entry_id;
 	}
 	
-	function entryData(pEntryID){
-		var tData = {};
-	
-		$.each(dataGet(), function(index, value) {
-			if(value.id == pEntryID){
-				tData = value;
-				return false;
+	// Return an entry ID from the target name and optional type
+	function resolve_link_object(pEntryObject, pTargetName, pTargetType) {
+        var entry_type = pTargetType;
+        
+        if (pTargetType == '')
+        {
+        	// Work out the type from the reference
+			if (pEntryObject.hasOwnProperty("references")) 
+			{
+				$.each(pEntryObject.references,  function(reference_type, reference_array) 
+				{
+					$.each(reference_array, function(reference_index, reference_name) 
+					{
+						if (reference_name == pTargetName)
+						{
+							entry_type = reference_type;
+							return;
+						}
+					});
+					
+					if (entry_type != '')
+						return;
+				});
 			}
-			
+        }
+	    if (entry_type != '')    
+		    return entryData(pTargetName,entry_type);
+		    
+		return [];
+	}
+	
+	function entryData(pEntryName, pEntryType)
+	{
+		var tData = [];
+	
+		$.each(dataGet(), function(index, value) 
+		{
+			if (value.type == pEntryType &&
+				(value.name == pEntryName || value["display name"] == pEntryName))
+			{
+				tData = value;
+				return;
+			}
 		});
 		
 		return tData;
 	}
+
+	function entryIDToData(pID)
+	{
+		var tData = [];
 	
+		$.each(dataGet(), function(index, value) 
+		{
+			if(value.id == pID)
+			{
+				tData = value;
+				return;
+			}
+		});
+		
+		return tData;
+	}
+
 	function entryNameToID(pName,pType){
 		var tID = 0;
+		var tEntryData;
+		tEntryData = entryData(pName, pType);
+		
+		if (tEntryData.length != 0)
+			tID = tEntryData.id;
 	
-		$.each(dataGet(), function( index, value) {
-			if((value.name == pName || value["display name"] == pName) && value.type == pType){
-				tID = value.id;
-				return false;
-			}
-			
-		});
 		return tID;
 	}
 	
@@ -820,16 +1095,7 @@
 	
 	function selectedEntryEnsureInView(tEntryID)
 	{
-		var listTop = $("#list").offset().top;
-		var listBottom = $("#list").offset().top + $("#list").height();
-		
-		if($("#entry_list_item_" + tEntryID).length){
-			//var elementTop = $("#entry_list_item_" + tEntryID).offset().top;
-			//var elementBottom = $("#entry_list_item_" + tEntryID).offset().top + $("#entry_list_item_" + tEntryID).height();
-		
-			//if(elementBottom > listBottom) $("#list").scrollTop($("#entry_list_item_" + tEntryID));
-			//if(elementTop < listTop) $("#list").scrollTop($("#entry_list_item_" + tEntryID));
-		}
+
 	} 
 	
 	function goEntryName(pLibraryName, pEntryName, pEntryType)
@@ -850,9 +1116,14 @@
 		})
 		
 		$("body").on( "click", ".load_entry", function() {
-			var tEntryID = $(this).attr("entryid");
-			history_add(tEntryID);
-			displayEntry(tEntryID);
+			var tEntryName, tEntryType, tEntryLibrary;
+			tEntryName = $(this).attr("entryName");
+			tEntryType = $(this).attr("entryType");
+			tEntryLibrary = $(this).attr("entryLibrary");
+			if (typeof(liveCode) != 'undefined')
+				liveCode.linkClicked(tEntryName, tEntryType, tEntryLibrary);
+			else
+				displayEntry(entryNameToID(tEntryName, tEntryType));	
 		});
 		
 		$("body").on( "click", ".load_breadcrumb_entry", function() {
@@ -877,33 +1148,6 @@
 		
 		$("body").on( "click", ".lcdoc_history_back", function() {
 			history_back();
-		});
-		
-		$("body").on( "click", "#table_list", function() {
-			$(this).addClass("table_focused");
-		});
-		
-		$(window).on( "click", function(e) {
-			if(e.pageX > $("#table_list").offset().left && e.pageX < ($("#table_list").offset().left + $("#table_list").width()) && e.pageY > $("#table_list").offset().top && e.pageY < ($("#table_list").offset().top + $("#table_list").height())) return false;
-			$("#table_list").removeClass("table_focused");
-		});
-		
-		$("#lcdoc_library_chooser_list").on( "click", "a", function() {
-			var library_id = $(this).attr("library_id");
-			var library_name = library_id_to_name(library_id);
-			library_set(library_id);
-		});
-		
-		$("#lcdoc_list").bind('mousewheel', function(e, d)  {
-			var t = $("#list");
-			if (d > 0 && t.scrollTop() === 0) {
-				e.preventDefault();
-			}
-			else {
-				if (d < 0 && (t.scrollTop() == t.get(0).scrollHeight - t.innerHeight())) {
-					e.preventDefault();
-				}
-			}
 		});
 		
 		$(document).keydown(function(e) {

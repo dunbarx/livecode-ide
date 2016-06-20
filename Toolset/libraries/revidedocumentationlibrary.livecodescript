@@ -84,8 +84,10 @@ private function __fetchDocsData pEntryName, pLibraryName, pType
    
    put tWhereString after tSQL
    
+   # Get the entry's escaped name
    local tEntryName
-   put tolower(pEntryName) into tEntryName
+   dispatch function "revDocsModifyForUrl" to stack "revDocsParser" with pEntryName
+   put the result into tEntryName
    
    # Execute the query, keeping the record set ID.
    put revQueryDatabase(sConnection, tSql, "tEntryName", "pType", "tLibraryID") into tRecordSet
@@ -148,7 +150,8 @@ end ideDocsFetchData
 Fetch the data for LiveCode script dictionary entries with name <pEntryName>
 
 Returns:
-A numerically keyed array, each element of which is the arrayof data 
+A numerically keyed array, each element of which is the array
+of data 
 pertaining to a  LiveCode script dictionary entry with the given name.
 */
 function ideDocsFetchLCSData pEntryName
@@ -160,7 +163,8 @@ Fetch the data for the LiveCode script dictionary entry with name <pEntryName>
 and type <pType>
 
 Returns:
-An arrayof data pertaining to the unique LiveCode script dictionary entry with the 
+An array
+of data pertaining to the unique LiveCode script dictionary entry with the 
 given name and type.
 */
 function ideDocsFetchLCSDataOfType pEntryName, pType
@@ -172,7 +176,8 @@ Fetch a specific element of the array of data for the LiveCode script dictionary
 with name <pEntryName> and type <pType>.
 
 Returns:
-Either a string or an arrayof data describing the element of the array of data
+Either a string or an array
+of data describing the element of the array of data
 pertaining to the LiveCode script dictionary entry with the given name and type.
 */
 function ideDocsFetchLCSElementOfType pEntryName, pType, pElement
@@ -183,7 +188,8 @@ end ideDocsFetchLCSElementOfType
 Fetch the data for LiveCode builder dictionary entries with name <pEntryName>
 
 Returns:
-A numerically keyed array, each element of which is the arrayof data 
+A numerically keyed array, each element of which is the array
+of data 
 pertaining to a LiveCode builder dictionary entry with the given name.
 */
 function ideDocsFetchLCBData pEntryName
@@ -195,7 +201,8 @@ Fetch the data for the LiveCode builder dictionary entry with name <pEntryName>
 and type <pType>
 
 Returns:
-An arrayof data pertaining to the unique LiveCode builder dictionary entry with the 
+An array
+of data pertaining to the unique LiveCode builder dictionary entry with the 
 given name and type.
 */
 function ideDocsFetchLCBDataOfType pEntryName, pType
@@ -207,7 +214,8 @@ Fetch a specific element of the array of data for the LiveCode builder dictionar
 with name <pEntryName> and type <pType>.
 
 Returns:
-Either a string or an arrayof data describing the element of the array of data
+Either a string or an array
+of data describing the element of the array of data
 pertaining to the LiveCode builder dictionary entry with the given name and type.
 */
 function ideDocsFetchLCBElementOfType pEntryName, pType, pElement
@@ -218,7 +226,8 @@ end ideDocsFetchLCBElementOfType
 Fetch the data for entries in the API for extension <pID> with name <pEntryName>
 
 Returns:
-A numerically keyed array, each element of which is the arrayof data 
+A numerically keyed array, each element of which is the array
+of data 
 pertaining to an entry in the API for the given extension with the given name.
 */
 function ideDocsFetchExtensionData pID, pEntryName
@@ -232,7 +241,8 @@ Fetch the data for the entry in the API for extension <pID> with name <pEntryNam
 and type <pType>
 
 Returns:
-An arrayof data pertaining to the unique entry in the API for the given extension with the 
+An array
+of data pertaining to the unique entry in the API for the given extension with the 
 given name and type.
 */
 function ideDocsFetchExtensionDataOfType pID, pEntryName, pType
@@ -246,7 +256,8 @@ Fetch a specific element of the array of data for the entry in the API for exten
 with name <pEntryName> and type <pType>.
 
 Returns:
-Either a string or an arrayof data describing the element of the array of data
+Either a string or an array
+of data describing the element of the array of data
 pertaining to the entry in the API for the given extension with the given name and type.
 */
 function ideDocsFetchExtensionElementOfType pID, pEntryName, pType, pElement
@@ -267,7 +278,7 @@ function ideDocsFetchLibraryNames
    end try
    
    local tRecordSet, tData, tDataSet, tSQL
-   put "SELECT library_name FROM libraries" into tSQL
+   put "SELECT library_display_name FROM libraries" into tSQL
    put revQueryDatabase(sConnection, tSQL) into tRecordSet
    if the result is not a number then
       return "error fetching library names" & return & the result
@@ -278,7 +289,7 @@ function ideDocsFetchLibraryNames
    put true into tMoreRecords
    repeat while tMoreRecords
       add 1 to tCount
-      get revDatabaseColumnNamed(tRecordSet, "library_name", "tData")
+      get revDatabaseColumnNamed(tRecordSet, "library_display_name", "tData")
       put tData into tDataSet[tCount]
       revMoveToNextRecord tRecordSet
       put the result into tMoreRecords
@@ -291,7 +302,7 @@ function ideDocsFetchLibraryNames
    return tDataSet
 end ideDocsFetchLibraryNames
 
-private function ideDocsFetchLibraryEntries pLibraryName
+function ideDocsFetchLibraryEntries pLibraryName
    return __ideDocsFetchData("", pLibraryName, "")
 end ideDocsFetchLibraryEntries
 
@@ -299,7 +310,8 @@ end ideDocsFetchLibraryEntries
 Fetch the data for all entries in the LiveCode script dictionary
 
 Returns:
-A numerically keyed array, each element of which is the arrayof data 
+A numerically keyed array, each element of which is the array
+of data 
 pertaining to an entry in the LiveCode script dictionary.
 */
 function ideDocsFetchLCSEntries
@@ -310,7 +322,8 @@ end ideDocsFetchLCSEntries
 Fetch the data for all entries in the LiveCode builder dictionary
 
 Returns:
-A numerically keyed array, each element of which is the arrayof data 
+A numerically keyed array, each element of which is the array
+of data 
 pertaining to an entry in the LiveCode builder dictionary.
 */
 function ideDocsFetchLCBEntries
@@ -321,7 +334,8 @@ end ideDocsFetchLCBEntries
 Fetch the data for all entries in the API for extension <pID>  
 
 Returns:
-A numerically keyed array, each element of which is the arrayof data 
+A numerically keyed array, each element of which is the array
+of data 
 pertaining to an entry in the API for the given extension.
 */
 function ideDocsFetchExtensionEntries pID
