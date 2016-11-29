@@ -65,13 +65,22 @@ private command _TestBuildStandalone pStackPath
 	StandaloneBuilderSaveAsStandalone tStackName
 	put the result into tResult
 	
-	TestAssert tStackName && "- builds successfully", tResult is empty
+	if tResult is not empty then
+		TestAssert tResult, tResult is empty
+	else
+		TestAssert tStackName && "- builds successfully", tResult is empty
+	end if
 	
 	TestDiagnostic tResult
 	
 	local tWarnings
 	put revStandaloneGetWarnings() into tWarnings
-	TestAssert tStackName && "- no warnings", tWarnings is empty
+	
+	if tWarnings is not empty then
+		TestAssert tWarnings, tWarnings is empty
+	else
+		TestAssert tStackName && "- no warnings", tWarnings is empty
+	end if
 	
 	TestDiagnostic tWarnings
 end _TestBuildStandalone
