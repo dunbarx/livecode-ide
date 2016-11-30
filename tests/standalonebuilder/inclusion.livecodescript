@@ -148,8 +148,12 @@ private command _TestStandaloneWithInclusion pStackId, pStackFilename, pItem
    
    TestAssert "standalone in expected location", there is a file tExe
    
-   local tResult
-   get shell(quote & tExe & quote)
+   local tResult, tShellCmd
+   put quote & tExe & quote into tShellCmd
+   if the environment contains "command line" then
+      put " -ui" after tShellCmd
+   end if
+   get shell(tShellCmd)
    put the result into tResult
    
    if tResult is not empty then
